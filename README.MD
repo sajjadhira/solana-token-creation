@@ -13,7 +13,7 @@ This project demonstrates how to create a SOLANA token using Node.js and React.j
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/solana-token-creation.git
+    git clone https://github.com/sajjadhira/solana-token-creation.git
     cd solana-token-creation
     ```
 
