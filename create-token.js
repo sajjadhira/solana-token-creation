@@ -3,7 +3,12 @@ const {
   Keypair,
   clusterApiUrl,
 } = require("@solana/web3.js");
-const { Token, TOKEN_PROGRAM_ID } = require("@solana/spl-token");
+const { createMint, getOrCreateAssociatedTokenAccount, mintTo } = require("@solana/spl-token");
+const {
+  irysStorage,
+  keypairIdentity,
+  Metaplex,
+} = require("@metaplex-foundation/js");
 
 (async () => {
   const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
@@ -60,25 +65,38 @@ console.log("Payer Balance: ", await connection.getBalance(payer.publicKey));
 
   // Create a new Mint
   const decimals = 9;
-  const mint = await Token.createMint(
-    connection,
-    payer,
-    payer.publicKey,
-    null,
-    decimals,
-    TOKEN_PROGRAM_ID
+  const mint = await createMint(
+    connection,          // Solana connection
+    payer,               // Payer for transaction fees
+    payer.publicKey,     // Mint authority (who can mint new tokens)
+    null,                // Freeze authority (optional, null disables freezing)
+    decimals             // Number of decimal places
   );
-  console.log(`Mint Address: ${mint.publicKey.toBase58()}`);
+
+  mintAddress = mint.toBase58();
+  console.log(`Mint Address: ${mint.toBase58()}`);
 
   // Create an Associated Token Account for the payer
-  const payerTokenAccount = await mint.getOrCreateAssociatedAccountInfo(
-    payer.publicKey
+  // Step 3: Create an Associated Token Account for the payer
+  const payerTokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,         // Solana connection
+    payer,              // Payer for transaction fees
+    mint,               // Mint address of the token
+    payer.publicKey     // Owner of the token account
   );
+
   console.log(`Token Account: ${payerTokenAccount.address.toBase58()}`);
 
   // Mint tokens to the payer's token account
-  const amount = 1e6; // Number of tokens to mint
-  await mint.mintTo(payerTokenAccount.address, payer.publicKey, [], amount);
+  const amount = 1000000000 * 10000000; // Number of tokens to mint
+    await mintTo(
+    connection,          // Solana connection
+    payer,               // Payer for transaction fees
+    mint,                // Mint address
+    payerTokenAccount.address, // Token account to receive the tokens
+    payer.publicKey,     // Mint authority
+    amount               // Number of tokens to mint
+  );
   console.log(
     `Minted ${amount / Math.pow(10, decimals)} tokens to account ${
       payerTokenAccount.address.toBase58()
@@ -86,4 +104,50 @@ console.log("Payer Balance: ", await connection.getBalance(payer.publicKey));
   );
 
   console.log("Token created successfully!");
+
+    // Initialize Metaplex
+  const metaplex = Metaplex.make(connection)
+    .use(keypairIdentity(payer))
+    .use(irysStorage({
+        address: "https://devnet.bundlr.network", // Bundlr endpoint
+        providerUrl: clusterApiUrl("devnet"),    // Solana Devnet URL
+        timeout: 60000,                          // Request timeout
+      })); // Use Bundlr for decentralized storage
+
+  // Define metadata for your token
+  const metadata = {
+    name: "CRYPTOPAIR",      // Token name
+    symbol: "CRP",               // Token symbol
+    uri: "https://inihub.com/metadata.json", // Link to token metadata (JSON file)
+    sellerFeeBasisPoints: 0,      // Royalties (e.g., 500 = 5%)
+    creators: [
+      {
+        address: payer.publicKey, // Creator's wallet address
+        share: 100,                          // Share percentage (100% = full ownership)
+      },
+    ],
+  };
+
+  // Create or update metadata on-chain
+  try {
+    const { nft } = await metaplex.nfts().create({
+      mintAddress,
+      name: metadata.name,
+      symbol: metadata.symbol,
+      uri: metadata.uri,
+      sellerFeeBasisPoints: metadata.sellerFeeBasisPoints,
+      creators: metadata.creators,
+    });
+
+
+    console.log(nft);
+
+    console.log("Metadata updated successfully!");
+    console.log("Token Address:", nft.mintAddress);
+    console.log("Metadata URI:", nft.uri);
+  } catch (error) {
+    console.error("Failed to update metadata:", error);
+  }
+
+
 })();

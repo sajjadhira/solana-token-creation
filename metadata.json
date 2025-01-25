@@ -1,0 +1,15 @@
+{
+  "name": "CRYPTOPAIR",
+  "symbol": "CRP",
+  "description": "This is a collection of CRYPTOPAIR NFTs.",
+  "image": "https://inihub.com/wp-content/uploads/2025/01/favicon.png",
+  "external_url": "http://cryptopair.io/",
+  "attributes": [
+    { "trait_type": "Rarity", "value": "Legendary" }
+  ],
+  "properties": {
+    "files": [
+      { "uri": "https://inihub.com/wp-content/uploads/2025/01/favicon.png", "type": "image/png" }
+    ]
+  }
+}
